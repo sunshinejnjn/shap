@@ -1,4 +1,37 @@
+This repository is fork of the original slundberg's shap repository with a few enhancements on the permutation explainer as follows:
+<lo>
+  <li>a "full" mode has been added to the permutation explainer which allows the explainer to use the model to process multiple inputs at once to highly improve the performance. this mode would be automatically enabled for permutation explainer, it works best with neural net models such as keras models, however maybe imcompatiable with some other models.</li>
+  <li>"main_effects" and "interactions" can now be calculated by permutation explainer and will be returned by the explainer (if its a permutation explainer, please refer to the original explainer class source code for automatic explainer type selection) in the returned dictionalry. Both are returned as matrix with interactions at a higher dimention (sample, variant(group)1, variant(group)2(which variant(group)1 interacts with)).</li>
+  <li>allows variant_gorups to be evaluated. this allows something like grouped variants in time series modelling to be explored with ease. you can group single measurement in mutiple instances as a group to expain the specific parameter, or group every instance to evaluate the time dialation.</li>
+</lo>
 
+Currently, the changes are permutation explainer only, you can check your explainer type like this:
+  <pre>
+  explainer=shap.Explainer(f, x_shap)
+  type(explainer)
+  </pre>
+  shap.explainers._permutation.Permutation
+
+Control arguments and some examples:
+- add "need_interaction=True" in the explainer call for interaction values.
+- add "mode='full'" for running the shape calculation in full batch mode. you can specify "batch_size=[number of rows]" to send masked inputs for a number of rows at once to model. requires the model accepts multiple inputs at once (such as a keras model or so).
+- added feature_groups support for full mode of permutation explainer. this would explain shap for group of features. send a feature_groups parameter to explainer to calculate shap. see example below. the feature_groups should be a dictionary with keys for group names each with a value for a list of original feature indexes, such as {"GRP1": [0,3,6], "GRP2":[1,4,7], "GRP3", [2,5,8]}
+- added a function to generate feature groups (for "full mode" only) for easy rnn feature grouping. please note that the "full mode" accepts single 1D input model only. you need to convert rnn to a single 1D input model first. you can do that with functional API if you are using a keras model. you must know what to do if you are using a raw tensorflow model.
+
+Examples:
+- feature grouping example1: explainer.gen_rnn_feature_groups(shape_in = (2,7), gen_type = "by_feature", names ="FEAT" ) will group the 14 input features into 2 time sequences of 7 feature groups named "FEAT-1" ~ "FEAT-7".
+- feature grouping example2: explainer.gen_rnn_feature_groups(shape_in = (2,7), gen_type = "by_sequence", names =["DAY1", "DAY2"] ) will group the 14 input features into 2 time sequence groups of 7 features named "DAY1" ~ "DAY2".
+Then you can do something like this:
+<pre>
+feature_groups=explainer.gen_rnn_feature_groups(shape_in = (2,7), gen_type = "by_feature" )
+sv_shap = explainer(x_shap, main_effects=True, need_interactions=True, batch_size=2, mode ="full", feature_groups=feature_groups)
+</pre>
+
+Enjoy.
+jnjnqy@gmail.com
+
+
+======================================
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/slundberg/shap/master/docs/artwork/shap_header.png" width="800" />
